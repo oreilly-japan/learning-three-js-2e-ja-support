@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Chapter-14b-1</title>
+		<meta charset="utf-8">
+	</head>
+
+	<body>
+		<script src="./js/build/three.min.js"></script>
+		<script src="./js/libs/charsetencoder.min.js"></script>
+		<script src="./js/libs/ammo.js"></script>
+		<script src="./js/loaders/TGALoader.js"></script>
+		<script src="./js/loaders/MMDLoader.js"></script>
+		<script src="./js/animation/CCDIKSolver.js"></script>
+		<script src="./js/animation/MMDPhysics.js"></script>
+
+		<script>
+
+			var container, stats;
+
+			var mesh, camera, scene, renderer;
+			var helper;
+
+			var mouseX = 0, mouseY = 0;
+
+			var windowHalfX = window.innerWidth / 2;
+			var windowHalfY = window.innerHeight / 2;
+
+			var clock = new THREE.Clock();
+
+			init();
+			animate();
+
+			function init() {
+
+				container = document.createElement( 'div' );
+				document.body.appendChild( container );
+
+				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 2000 );
+				camera.position.z = 30;
+
+				// scene
+
+				scene = new THREE.Scene();
+
+				var ambient = new THREE.AmbientLight( 0x888888 );
+				scene.add( ambient );
+
+				var directionalLight = new THREE.DirectionalLight( 0x666666 );
+				directionalLight.position.set( -1, 1, 1 ).normalize();
+				scene.add( directionalLight );
+
+				//
+
+				renderer = new THREE.WebGLRenderer( { antialias: true } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				renderer.setClearColor( new THREE.Color( 0xffffff ) );
+				container.appendChild( renderer.domElement );
+
+				// model
+
+				var onProgress = function ( xhr ) {
+					if ( xhr.lengthComputable ) {
+						var percentComplete = xhr.loaded / xhr.total * 100;
+						console.log( Math.round(percentComplete, 2) + '% downloaded' );
+					}
+				};
+
+				var onError = function ( xhr ) {
+				};
+
+				var modelFile = 'models/model/model.pmd';
+
+				helper = new THREE.MMDHelper( renderer );
+
+				var loader = new THREE.MMDLoader();
+				loader.setDefaultTexturePath( './models/default/' );
+
+				loader.loadModel( modelFile, function ( object ) {
+
+					mesh = object;
+					mesh.position.y = -10;
+
+					helper.add( mesh );
+					helper.setPhysics( mesh );
+
+					scene.add( mesh );
+
+				}, onProgress, onError );
+
+				document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+
+				//
+
+				window.addEventListener( 'resize', onWindowResize, false );
+
+			}
+
+			function onWindowResize() {
+
+				windowHalfX = window.innerWidth / 2;
+				windowHalfY = window.innerHeight / 2;
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+			}
+
+			function onDocumentMouseMove( event ) {
+
+				mouseX = ( event.clientX - windowHalfX ) / 2;
+				mouseY = ( event.clientY - windowHalfY ) / 2;
+
+			}
+
+			//
+
+			function animate() {
+
+				requestAnimationFrame( animate );
+				render();
+
+			}
+
+			function render() {
+
+				camera.lookAt( scene.position );
+
+				if ( mesh ) {
+
+					helper.animate( clock.getDelta() );
+					helper.render( scene, camera );
+
+				}
+
+			}
+
+		</script>
+	</body>
+</html>

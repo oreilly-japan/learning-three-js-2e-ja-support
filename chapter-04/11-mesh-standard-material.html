@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+    <title>Example 04.11 - Mesh Standard material</title>
+    <script type="text/javascript" src="../libs/three.js"></script>
+
+    <script type="text/javascript" src="../libs/stats.js"></script>
+    <script type="text/javascript" src="../libs/dat.gui.js"></script>
+
+    <style>
+        body {
+            /* set margin to 0 and overflow to hidden, to go fullscreen */
+            margin: 0;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+
+<div id="Stats-output">
+</div>
+<!-- Div which will hold the Output -->
+<div id="WebGL-output">
+</div>
+
+<!-- Javascript code that runs our Three.js examples -->
+<script type="text/javascript">
+
+    // once everything is loaded, we run our Three.js stuff.
+    function init() {
+
+        var stats = initStats();
+
+        // create a scene, that will hold all our elements such as objects, cameras and lights.
+        var scene = new THREE.Scene();
+
+        // create a camera, which defines where we're looking at.
+        var camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+        // create a render and set the size
+        var webGLRenderer = new THREE.WebGLRenderer();
+        webGLRenderer.setClearColor(new THREE.Color(0xEEEEEE));
+        webGLRenderer.setSize(window.innerWidth, window.innerHeight);
+        webGLRenderer.shadowMap.enabled = true;
+
+        var groundGeom = new THREE.PlaneGeometry(100, 100, 4, 4);
+        var groundMesh = new THREE.Mesh(groundGeom, new THREE.MeshBasicMaterial({color: 0x555555}));
+        groundMesh.rotation.x = -Math.PI / 2;
+        groundMesh.position.y = -20;
+        scene.add(groundMesh);
+
+        var geometry = new THREE.TorusKnotGeometry(10, 3, 200, 20);
+
+
+        var meshMaterial = new THREE.MeshStandardMaterial({color: 0x7777ff});
+        var mesh = new THREE.Mesh(geometry, meshMaterial);
+        mesh.position.set(0, 3, 2);
+
+        // add the sphere to the scene
+        scene.add(mesh);
+
+        // position and point the camera to the center of the scene
+        camera.position.x = -20;
+        camera.position.y = 30;
+        camera.position.z = 40;
+        camera.lookAt(new THREE.Vector3(10, 0, 0));
+
+        // add subtle ambient lighting
+//        var ambientLight = new THREE.AmbientLight(0x0c0c0c);
+//        scene.add(ambientLight);
+
+        // add spotlight for the shadows
+        var spotLight = new THREE.SpotLight(0xffffff);
+        spotLight.position.set(-0, 30, 60);
+        spotLight.castShadow = true;
+        spotLight.intensity = 0.6;
+        scene.add(spotLight);
+
+        // add the output of the renderer to the html element
+        document.getElementById("WebGL-output").appendChild(webGLRenderer.domElement);
+
+        // call the render function
+        var step = 0;
+
+        var controls = new function () {
+            this.rotationSpeed = 0.02;
+            this.bouncingSpeed = 0.03;
+
+            this.opacity = meshMaterial.opacity;
+            this.transparent = meshMaterial.transparent;
+            this.overdraw = meshMaterial.overdraw;
+            this.visible = meshMaterial.visible;
+            this.roughness = meshMaterial.roughness;
+            this.metalness = meshMaterial.metalness;
+            this.side = "front";
+            this.shading = "smooth";
+
+            this.color = meshMaterial.color.getStyle();
+
+
+            this.selectedMesh = "cube";
+
+        };
+
+        var gui = new dat.GUI();
+
+
+        var spGui = gui.addFolder("Mesh");
+        spGui.add(controls, 'opacity', 0, 1).onChange(function (e) {
+            meshMaterial.opacity = e
+        });
+        spGui.add(controls, 'transparent').onChange(function (e) {
+            meshMaterial.transparent = e
+        });
+        spGui.add(controls, 'visible').onChange(function (e) {
+            meshMaterial.visible = e
+        });
+        spGui.add(controls, 'roughness', 0, 1.0).onChange(function (e) {
+            meshMaterial.roughness = e
+        });
+        spGui.add(controls, 'metalness', 0, 1.0).onChange(function (e) {
+            meshMaterial.metalness = e
+        });
+        spGui.add(controls, 'side', ["front", "back", "double"]).onChange(function (e) {
+            console.log(e);
+            switch (e) {
+                case "front":
+                    meshMaterial.side = THREE.FrontSide;
+                    break;
+                case "back":
+                    meshMaterial.side = THREE.BackSide;
+                    break;
+                case "double":
+                    meshMaterial.side = THREE.DoubleSide;
+                    break;
+            }
+            meshMaterial.needsUpdate = true;
+            console.log(meshMaterial);
+        });
+        spGui.add(controls, 'shading', ["flat", "smooth"]).onChange(function (e) {
+            console.log(e);
+            switch (e) {
+                case "flat":
+                    meshMaterial.shading = THREE.FlatShading;
+                    break;
+                case "smooth":
+                    meshMaterial.shading = THREE.SmoothShading;
+                    break;
+            }
+            meshMaterial.needsUpdate = true;
+            console.log(meshMaterial);
+        });
+        spGui.addColor(controls, 'color').onChange(function (e) {
+            meshMaterial.color.setStyle(e)
+        });
+
+        render();
+
+        function render() {
+            stats.update();
+
+            mesh.rotation.y = step += 0.01;
+
+            // render using requestAnimationFrame
+            requestAnimationFrame(render);
+            webGLRenderer.render(scene, camera);
+        }
+
+        function initStats() {
+
+            var stats = new Stats();
+
+            stats.setMode(0); // 0: fps, 1: ms
+
+
+            // Align top-left
+            stats.domElement.style.position = 'absolute';
+            stats.domElement.style.left = '0px';
+            stats.domElement.style.top = '0px';
+
+            document.getElementById("Stats-output").appendChild(stats.domElement);
+
+            return stats;
+        }
+    }
+    window.onload = init;
+</script>
+</body>
+</html>

@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+    <title>Example 10.06 - Specular map</title>
+    <script type="text/javascript" src="../libs/three.js"></script>
+
+    <script type="text/javascript" src="../libs/stats.js"></script>
+    <script type="text/javascript" src="../libs/dat.gui.js"></script>
+
+    <!-- vr -->
+    <script type="text/javascript" src="../libs/WebVR.js"></script>
+    <script type="text/javascript" src="../libs/effects/VREffect.js"></script>
+    <script type="text/javascript" src="../libs/controls/VRControls.js"></script>
+    <!-- for cardboard
+    <script type="text/javascript" src="../libs/effects/CardboardEffect.js"></script>
+    <script type="text/javascript" src="../libs/controls/DeviceOrientationControls.js"></script>
+    -->
+    <style>
+        body {
+            /* set margin to 0 and overflow to hidden, to go fullscreen */
+            margin: 0;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+
+<div id="Stats-output">
+</div>
+<!-- Div which will hold the Output -->
+<div id="WebGL-output">
+</div>
+
+<!-- Javascript code that runs our Three.js examples -->
+<script type="text/javascript">
+    // for webvr
+    if (WEBVR.isLatestAvailable() === false) {
+        document.body.appendChild(WEBVR.getMessage());
+    }
+
+    // once everything is loaded, we run our Three.js stuff.
+    function init() {
+
+        // create a scene, that will hold all our elements such as objects, cameras and lights.
+        var scene = new THREE.Scene();
+
+        // create a camera, which defines where we're looking at.
+        var camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+        // create a render and set the size
+        var webGLRenderer = new THREE.WebGLRenderer();
+        webGLRenderer.setClearColor(new THREE.Color(0x000));
+        webGLRenderer.setSize(window.innerWidth, window.innerHeight);
+        webGLRenderer.shadowMap.enabled = true;
+
+		var raycaster = new THREE.Raycaster();
+
+        // earth
+        var earth = createEarthMesh(new THREE.SphereGeometry(10, 80, 80));
+        earth.position.y = -10;
+        scene.add(earth);
+
+        // air
+        var air = createAirMesh(new THREE.SphereGeometry(10.1, 80, 80));
+        air.position.copy(earth.position);
+        scene.add(air);
+
+        // moon
+        var moon = createMoonMesh(new THREE.SphereGeometry(5, 20, 20));
+        moon.position.x = -50;
+        earth.add(moon);
+
+        // stars
+        var pos = earth.position;
+        var rad = Math.abs(moon.position.x);
+        earth.add(createStarPoints(100, 5, pos, rad, true));
+        earth.add(createStarPoints(500, 3, pos, rad));
+        earth.add(createStarPoints(2000, 2, pos, rad));
+
+        // debris
+        var earthAndDebris = [earth];
+        var debris = [];
+        for (var i = 0; i < 30; i++) {
+            var debri = createDebri(10.2, earth.position);
+            earth.add(debri);
+            debris.push(debri);
+            earthAndDebris.push(debri);
+        }
+
+        var selectedDebri;
+
+        // position and point the camera to the center of the scene
+        camera.position.x = 8;
+
+        camera.lookAt(new THREE.Vector3(0, 0, 0));
+
+        // vr
+        // for webvr
+        var controls = new THREE.VRControls(camera);
+        var effect = new THREE.VREffect(webGLRenderer);
+        var clock = new THREE.Clock();
+        if (WEBVR.isAvailable() === true) {
+            document.body.appendChild(WEBVR.getButton(effect));
+        }
+        // for cardboard
+        //var controls = new THREE.DeviceOrientationControls(camera);
+        //var effect = new THREE.CardboardEffect(webGLRenderer);
+
+        var ambi = new THREE.AmbientLight(0x181818);
+        scene.add(ambi);
+
+        var directionalLight = new THREE.DirectionalLight(0xffffff);
+        directionalLight.position.set(100, 0, 150);
+        earth.add(directionalLight);
+
+        var directionalBackLight = new THREE.DirectionalLight(0xffffff);
+        directionalBackLight.position.copy(directionalLight.position.clone().negate());
+        directionalBackLight.intensity = 0.7;
+        earth.add(directionalBackLight);
+
+        // add the output of the renderer to the html element
+        document.getElementById("WebGL-output").appendChild(webGLRenderer.domElement);
+        webGLRenderer.domElement.addEventListener('click', function() {
+            removeSelectedDebri(10.2, earth.position);
+        }.bind(this));
+        window.addEventListener('resize', onWindowResize, false);
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            effect.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // call the render function
+        var step = 0;
+
+
+        render();
+
+        function createEarthMesh(geom) {
+            var textureLoader = new THREE.TextureLoader();
+            var planetTexture = textureLoader.load("../assets/textures/planets/Earth.png");
+            var specularTexture = textureLoader.load("../assets/textures/planets/EarthSpec.png");
+            var normalTexture = textureLoader.load("../assets/textures/planets/EarthNormal.png");
+
+
+            var planetMaterial = new THREE.MeshPhongMaterial();
+            planetMaterial.specularMap = specularTexture;
+            planetMaterial.specular = new THREE.Color(0x4444aa);
+            planetMaterial.shininess = 5;
+            planetMaterial.normalMap = normalTexture;
+            planetMaterial.normalScale = new THREE.Vector2(5, 5);
+            planetMaterial.map = planetTexture;
+
+            // create a multimaterial
+            var mesh = THREE.SceneUtils.createMultiMaterialObject(geom, [planetMaterial]);
+
+            return mesh;
+        }
+
+        function createAirMesh(geom) {
+
+            var planetMaterial = new THREE.MeshPhongMaterial();
+            planetMaterial.side = THREE.BackSide;
+            planetMaterial.transparent = true;
+            planetMaterial.opacity = 0.2;
+            planetMaterial.color = new THREE.Color(0xffffff);
+
+            // create a multimaterial
+            var mesh = THREE.SceneUtils.createMultiMaterialObject(geom, [planetMaterial]);
+
+            return mesh;
+        }
+
+
+        function createMoonMesh(geom) {
+            var textureLoader = new THREE.TextureLoader();
+            var planetTexture = textureLoader.load("../assets/textures/planets/Moon.png");
+            var normalTexture = textureLoader.load("../assets/textures/planets/Mars-normalmap_2k.png");
+
+            var planetMaterial = new THREE.MeshPhongMaterial();
+            planetMaterial.normalMap = normalTexture;
+            planetMaterial.normalScale = new THREE.Vector2(5, 5);
+            planetMaterial.map = planetTexture;
+            planetMaterial.specularMap = planetTexture;
+            planetMaterial.specular = new THREE.Color(0x444400);
+            planetMaterial.shininess = 0;
+
+            var mesh = new THREE.Mesh(geom, planetMaterial);
+
+            return mesh;
+        }
+
+        function createStarPoints(num, size, center, radius, red) {
+            var geom = new THREE.Geometry();
+
+            var textureLoader = new THREE.TextureLoader();
+            var texture = textureLoader.load(red ? 
+                "../assets/textures/lensflare/lensflare0.png" :
+                "../assets/textures/lensflare/lensflare0_white.png");
+            var material = new THREE.PointsMaterial({size: size, map: texture});
+
+            for (var i = 0; i < num; i++) {
+                var theta = Math.random() * 2 * Math.PI;
+                var phi = Math.random() * 2 * Math.PI;
+                var r = radius * (1.5 + Math.random() / 10);
+                var particle = new THREE.Vector3(
+                    r * Math.sin(theta) * Math.cos(phi),
+                    r * Math.sin(theta) * Math.sin(phi),
+                    r * Math.cos(theta)
+                );
+                geom.vertices.push(particle);
+            }
+            cloud = new THREE.Points(geom, material);
+            cloud.sortParticles = true;
+            return cloud;
+        }
+
+        function putDebriRandom(mesh, limitRadius, center) {
+            var theta = Math.random() * 2 * Math.PI;
+            var phi = Math.random() * 2 * Math.PI;
+            var r = limitRadius * 2 + Math.random() / 100;
+            mesh.position.set(
+                center.x + r * Math.sin(theta) * Math.cos(phi),
+                center.y + r * Math.sin(theta) * Math.sin(phi),
+                center.z + r * Math.cos(theta)
+            );
+        }
+
+        function createDebri(limitRadius, center) {
+            var geom = new THREE.BoxGeometry(1, 1, 1);
+            var material = new THREE.MeshPhongMaterial();
+            material.color = new THREE.Color(Math.random() * 0xffffff);
+            material.emissive = new THREE.Color(0x333333);
+            material.specular = new THREE.Color(0x4444aa);
+            material.shininess = 100;
+            var mesh = new THREE.Mesh(geom, material);
+            putDebriRandom(mesh, limitRadius, center);
+            mesh.rotation.x = Math.random() * 2 * Math.PI;
+            mesh.rotation.y = Math.random() * 2 * Math.PI;
+            mesh.rotation.z = Math.random() * 2 * Math.PI;
+            mesh.drotx = (Math.random() - 0.5) / 10;
+            mesh.droty = (Math.random() - 0.5) / 10;
+            mesh.drotz = (Math.random() - 0.5) / 10;
+            return mesh;
+        }
+
+        function removeSelectedDebri(limitRadius, center) {
+            if (selectedDebri) {
+                putDebriRandom(selectedDebri, limitRadius, center);
+                deselectDebri();
+            }
+        }
+
+        function selectDebri() {
+            raycaster.setFromCamera({x:0, y:0}, camera);
+            var intersects = raycaster.intersectObjects(earthAndDebris);
+            if (intersects.length === 0) {
+                deselectDebri();
+            }
+            else {
+                for (var i = 0; i < intersects.length; i++) {
+                    var debri = intersects[i].object;
+                    if (debri === earth) {
+                        console.log(debri === earth);
+                        break;
+                    }
+                    if (selectedDebri !== debri) {
+                        deselectDebri();
+                        selectedDebri = debri;
+                        debri.material.emissive.setHex(0xff3333);
+                        debri.scale.set(2, 2, 2);
+                        break;
+                    }
+                }
+            }
+        }
+
+        function deselectDebri() {
+            if (selectedDebri) {
+                selectedDebri.material.emissive.setHex(0x333333);
+                selectedDebri.scale.set(1, 1, 1);
+            }
+            selectedDebri = null;
+        }
+
+        function render() {
+
+            debris.forEach(function(debri) {
+                debri.rotation.x += debri.drotx;
+                debri.rotation.y += debri.droty;
+                debri.rotation.z += debri.drotz;
+            });
+
+            selectDebri();
+
+            var delta = clock.getDelta();
+            controls.update(delta);
+            //controls.update();
+
+            earth.rotation.z -= 0.001;
+
+            // render using requestAnimationFrame
+            requestAnimationFrame(render);
+            // vr
+            //webGLRenderer.render(scene, camera);
+			effect.render(scene, camera);
+        }
+    }
+    window.onload = init;
+</script>
+</body>
+</html>
