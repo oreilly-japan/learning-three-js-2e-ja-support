@@ -32,9 +32,9 @@
 
     function loadFonts() {
         var fontLoader = new THREE.FontLoader();
-        fontLoader.load("../assets/fonts/helvetiker_regular.typeface.json", function(helvetiker) {
+        fontLoader.load("../assets/fonts/helvetiker_regular.typeface.js", function(helvetiker) {
             fonts['helvetiker'] = helvetiker;
-            fontLoader.load("../assets/fonts/optimer_regular.typeface.json", function(optimer) {
+            fontLoader.load("../assets/fonts/optimer_regular.typeface.js", function(optimer) {
                 fonts['optimer'] = optimer;
                 init();
             });
