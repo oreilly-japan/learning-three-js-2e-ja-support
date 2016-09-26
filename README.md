@@ -16,4 +16,8 @@
 
 ## 正誤表
 
-まだありません。誤植など間違いを見つけた方は、japan＠oreilly.co.jpまでお知らせください。
+ページ番号 | 行番号 | 正 | 誤
+----------|-------|-----|----
+p. 260 | l. 21 | <script src="../loaders/collada/ | <script src="../cloaders/ollada/
+
+誤植など間違いを見つけた方は、japan＠oreilly.co.jpまでお知らせください。
